@@ -5,16 +5,19 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
+using System.Reflection;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // serilog
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
+    .MinimumLevel.Information()
     .WriteTo.Console()
     .WriteTo.File("logs/cityinfo.txt", rollingInterval: RollingInterval.Day)
+    .WriteTo.MSSqlServer(builder.Configuration["ConnectionStrings:CityInfoDBConnectionString"], tableName: "ApiLogs", autoCreateSqlTable: true)
     .CreateLogger();
 builder.Host.UseSerilog();
 
@@ -40,11 +43,35 @@ builder.Services.AddSingleton<FileExtensionContentTypeProvider>();
 
 // swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(setup =>
+{
+    var xmlCommentsFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlCommetnsFilePath = Path.Combine(AppContext.BaseDirectory, xmlCommentsFile);
+
+    setup.IncludeXmlComments(xmlCommetnsFilePath);
+
+    setup.AddSecurityDefinition("CityInfoApiBearerAuth", new OpenApiSecurityScheme()
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        Description = "Input a valid token to access this API"
+    });
+
+    setup.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "CityInfoApiBearerAuth" }
+            }, new List<string>() 
+        }
+    });
+});
 
 // efcore
-builder.Services.AddDbContext<CityInfoContext>(
-    dbContextOptions => dbContextOptions.UseSqlServer(builder.Configuration["ConnectionStrings:CityInfoDBConnectionString"]));
+builder.Services.AddDbContext<CityInfoContext>(dbContextOptions => dbContextOptions.UseSqlServer(builder.Configuration["ConnectionStrings:CityInfoDBConnectionString"]));
 
 // jwt authentication
 builder.Services.AddAuthentication(options =>
@@ -75,6 +102,16 @@ builder.Services.AddAuthorization(configs =>
         configPolicy.RequireClaim("city", "Antwerp");
     });
 });
+
+// api versioning
+builder.Services.AddApiVersioning(configs =>
+{
+    configs.AssumeDefaultVersionWhenUnspecified = true;
+    configs.DefaultApiVersion = new Microsoft.AspNetCore.Mvc.ApiVersion(1, 0);
+    configs.ReportApiVersions = true;
+});
+
+
 
 
 

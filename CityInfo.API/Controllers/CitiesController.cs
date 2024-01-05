@@ -8,8 +8,9 @@ using Newtonsoft.Json;
 namespace CityInfo.API.Controllers
 {
     [ApiController]
-    [Route("api/cities")]
-    //[Authorize]
+    [Route("api/v{vrsn:apiVersion}/cities")]
+    [Authorize]
+    [ApiVersion("1.0")]
     public class CitiesController : ControllerBase
     {
         const int _maxPageSize = 20;
@@ -38,8 +39,18 @@ namespace CityInfo.API.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Get city info based on its Id
+        /// </summary>
+        /// <param name="id">id of intrested city</param>
+        /// <param name="includePointsOfIntrest">true/false as parameter</param>
+        /// <returns>returns IActionResult</returns>
+        /// <response code="200">returns city information</response>
         [HttpGet("{id}")]
-        public async Task<ActionResult<CityDto>> GetCity(int id, bool includePointsOfIntrest = false)
+        [ProducesResponseType(200)]
+        [ProducesResponseType(400)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetCity(int id, bool includePointsOfIntrest = false)
         {
             //find city
             var cityToReturn = await _cityInfoRepository.GetCityAsync(id, includePointsOfIntrest);

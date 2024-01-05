@@ -9,9 +9,10 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CityInfo.API.Controllers
 {
-    [Route("api/cities/{cityId}/pointsofinterest")]
+    [Route("api/v{version:apiVersion}/cities/{cityId}/pointsofinterest")]
     [ApiController]
-    //[Authorize("MustBeTabriz")]
+    [ApiVersion("2.0")]
+    [Authorize("MustBeTabriz")]
     public class PointsOfInterestController : ControllerBase
     {
         private readonly ILogger<PointsOfInterestController> _logger;
@@ -34,6 +35,8 @@ namespace CityInfo.API.Controllers
         [HttpGet]
         public async Task<ActionResult<List<PointOfInterestDto>>> GetPointsOfInterest(int cityId)
         {
+            _logger.LogCritical("penetrateeeed!");
+
             var cityName = User.Claims.FirstOrDefault(c => c.Type == "city");
 
             if (!await _cityInfoRepository.CityExistsAsync(cityId))
